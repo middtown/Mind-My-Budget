@@ -158,6 +158,30 @@ const UIController = (function () {
     percentageLabel: '.budget__expenses--percentage',
     container: '.container',
     expensesPercentageLabel: '.item__percentage',
+    dateLabel: '.budget__title--month',
+  };
+
+  //make the nubers from inputs look like actual dollars and cents.
+  let formatNumber = function (num, type) {
+    num = Math.abs(num);
+    num = num.toFixed(2);
+
+    //split number in to to parts, int. and decimal portions
+    let numSplit = num.split('.');
+    let int = numSplit[0];
+    if (int.length > 3) {
+      int = int.substr(0, int.length - 3) + ',' + int.substr(int.length - 3, 3); //input of 2190, is 2,190
+    }
+
+    let dec = numSplit[1];
+    type === 'exp' ? sign = '-' : sign = '+';
+    return type + ' ' + int +  '.' + dec;
+  };
+
+  let nodeListForEach = function (list, callback) {
+    for (let i = 0; i < list.length; i++) {
+      callback(list[i], i);
+    }
   };
 
   return {
@@ -184,7 +208,7 @@ const UIController = (function () {
         // Replace the placeholder text with some actual data
         newHtml = html.replace('%id%', obj.id);
         newHtml = newHtml.replace('%description%', obj.description);
-        newHtml = newHtml.replace('%value%', obj.value);
+        newHtml = newHtml.replace('%value%', formatNumber(obj.value, type));
 
         // Insert the HTML into the DOM
         document.querySelector(element).insertAdjacentHTML('beforeend', newHtml);
@@ -212,9 +236,11 @@ const UIController = (function () {
     },
 
     displayBudget: function (obj) {
-      document.querySelector(domClassesOrIds.budgetLabel).textContent = obj.budget;
-      document.querySelector(domClassesOrIds.incomeLabel).textContent = obj.totalInc;
-      document.querySelector(domClassesOrIds.expensesLabel).textContent = obj.totalExp;
+      obj.budget > 0 ? type = 'inc' : type = 'exp';
+
+      document.querySelector(domClassesOrIds.budgetLabel).textContent = formatNumber(obj.budget, type);
+      document.querySelector(domClassesOrIds.incomeLabel).textContent = formatNumber(obj.totalInc, 'inc');
+      document.querySelector(domClassesOrIds.expensesLabel).textContent = formatNumber(obj.totalExp, 'exp');
       if (obj.percentage > 0) {
         document.querySelector(domClassesOrIds.percentageLabel).textContent = obj.percentage + '%';
       } else {
@@ -225,12 +251,6 @@ const UIController = (function () {
     displayPercentages: function (percentages) {
       let fields = document.querySelectorAll(domClassesOrIds.expensesPercentageLabel); //will return a node list.
 
-      let nodeListForEach = function (list, callback) {
-        for (let i = 0; i < list.length; i++) {
-          callback(list[i], i);
-        }
-      };
-
       //nodelist forEach array.
       nodeListForEach(fields, function (current, index) {
         if (percentages[index] > 0) {
@@ -240,6 +260,33 @@ const UIController = (function () {
         }
       });
 
+      let nodeListForEach = function (list, callback) {
+        for (let i = 0; i < list.length; i++) {
+          callback(list[i], i);
+        }
+      };
+
+    },
+
+    displayMonth: function () {
+      let now = new Date();
+      let year = now.getFullYear();
+      let Months = ['January', 'Feburary', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'Novermber', 'December'];
+      let month = now.getMonth();
+      document.querySelector(domClassesOrIds.dateLabel).textContent = Months[month] + ' of ' + year;
+    },
+
+    changedType: function () {
+      let fields = document.querySelectorAll(
+        domClassesOrIds.inputType + ',' +
+        domClassesOrIds.inputDescription + ',' +
+        domClassesOrIds.inputValue);
+
+      nodeListForEach(fields, function (current) {
+        current.classList.toggle('red-focus');
+      });
+
+      document.querySelector(domClassesOrIds.inputBtn).classList.toggle('red');
     },
 
     getdomClassOrId: function () {
@@ -250,7 +297,7 @@ const UIController = (function () {
 
 //yep... another module / controller based off of closers / this tells everything what to do
 
-//Overall global app controller
+//OVERALL APP CONTROLLER FOR ALL FUNCTON COMING IN FROM TWO OTHER MODULES
 const controller = (function (budgetCtrl, UICtrl) {
 
   //bringing in availablitiy of query selectors to UI controller
@@ -267,6 +314,8 @@ const controller = (function (budgetCtrl, UICtrl) {
 
     //event listenter deligate as one listener v. having listners on multilple items.
     document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);
+
+    document.querySelector(DOM.inputType).addEventListener('change', UICtrl.changedType);
   };
 
   let updateBudget = function () {
@@ -345,6 +394,7 @@ const controller = (function (budgetCtrl, UICtrl) {
   return {
     init: function () {
       console.log('application has started');
+      UICtrl.displayMonth();
       UICtrl.displayBudget({
         budget: 0,
         totalInc: 0,
